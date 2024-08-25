@@ -1,0 +1,16 @@
+asgiref
+certifi
+charset-normalizer
+Django
+django-environ
+django-extensions
+firebase-admin
+gunicorn
+idna
+packaging
+Pillow
+python-dotenv
+requests
+sqlparse
+tzdata
+urllib3

@@ -1,0 +1,719 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TipsNOW - Consistency Tips</title>
+    
+    <link rel="icon" href="{% static 'image.ico' %}"> <!-- Add this line -->
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Permanent+Marker&family=Bangers&family=Caveat:wght@400;700&family=Lobster&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #d0d6ff;
+            font-family: 'Comic Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            
+        }
+        h1, h2, h3 {
+            font-family: 'Fredoka One', cursive;
+
+
+        }
+        h3{
+            color:#4A4A4A
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            /* Apply gradient background to text */
+            background: linear-gradient(90deg, #005bb5, #7C93C3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            font-size: 1em;
+            outline: none;
+            box-shadow: none;
+        }
+        input[type="text"] {
+            height: 40px;
+        }
+        textarea {
+            resize: vertical;
+            height: 40px;
+            overflow: auto;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: linear-gradient(90deg, #005bb5, #7C93C3);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #005bb5, #003c82);
+        }
+        button.active {
+            background: linear-gradient(90deg, #005bb5, #003c82);
+        }
+        .top-section {
+            margin-top: 40px;
+        }
+        .bottom-section {
+            margin-top: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+        .bottom-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        .tips-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .tip {
+            width: 100%;
+            max-width: 800px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+            word-wrap: break-word;
+            word-break: break-word;
+            
+        }
+        .tip h3 {
+            margin: 0;
+            font-size: 1.5em;
+            color: #4A4A4A;
+        }
+        .tip p {
+            margin: 10px 0;
+            font-size:20px;
+        }
+        .likes{
+            font-size:15px;
+        }
+        .tip .twitter-link {
+            display: block;
+            margin: 5px 0;
+            color: #005bb5;
+            text-decoration: none;
+        }
+        .tip .twitter-link:hover {
+            text-decoration: underline;
+        }
+        .reaction-buttons {
+            display: flex;
+            justify-content: flex-start;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .reaction-buttons form {
+            margin: 0;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+        }
+        .reaction-buttons button {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            padding: 5px 10px;
+            transition: color 0.1s ease, background-color 0.3s ease;
+            width: auto;
+        }
+        .reaction-buttons button:hover {
+            color: #7C93C3;
+            background-color: #f0f8ff;
+        }
+        .reaction-buttons button.active {
+            background: #4A4A4A;
+            color: white;
+        }
+        .section-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .section-btn {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background-color: #7C93C3;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .section-btn.active {
+            background-color: #7C93C3;
+            color: white;
+        }
+        .section-btn:hover {
+            background-color: #7C93C3;
+        }
+        .titled{
+            color:#4A4A4A;
+        }
+        #charCount {
+            text-align: right;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .tip-of-the-day {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        
+        .tip-of-the-day h2 {
+            color: #005bb5;
+            font-family: 'Fredoka One', cursive;
+            margin-bottom: 15px;
+        }
+        
+        .tip-of-the-day .tip {
+            width: 100%;
+            max-width: 700px;
+            padding: 15px;
+            margin: 10px auto;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        p a{
+            color:#005bb5;
+        }
+        /* Add these styles at the end of your existing CSS */
+
+@media screen and (max-width: 900px) {
+    .tip, .tip-of-the-day, .tip-of-the-day .tip, form {
+        max-width: 90%;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    h1 {
+        font-size: 2.5em;
+    }
+
+    .bottom-section h2 {
+        font-size: 1.5em;
+    }
+
+    .tip h3 {
+        font-size: 1.3em;
+    }
+
+    .tip p {
+        font-size: 18px;
+    }
+
+    .section-selector {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .section-btn {
+        width: 80%;
+        margin: 5px 0;
+    }
+
+    input[type="text"], textarea {
+        font-size: 0.9em;
+    }
+
+    button {
+        font-size: 1em;
+    }
+}
+
+@media screen and (max-width: 400px) {
+    h1 {
+        font-size: 2em;
+    }
+
+    .tip h3 {
+        font-size: 1.2em;
+    }
+
+    .tip p {
+        font-size: 16px;
+    }
+
+    input[type="text"], textarea {
+        font-size: 0.8em;
+    }
+}
+.top-section {
+    text-align: center;
+    margin: 30px auto;
+    padding: 10px;
+    max-width: 600px;
+    
+    border-radius: 15px;
+    background: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.top-section h1 {
+    margin: 0 0 10px 0;
+    font-size: 3em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.top-section h1 .gradient-text {
+    background: linear-gradient(90deg, #005bb5, #7C93C3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.made-by {
+    font-family: 'Comic Neue', sans-serif;
+    font-size: 1.2em;
+    color: #7C93C3;
+    margin: 0;
+}
+
+.made-by a {
+    color: #6e6e6e;
+    text-decoration: underline; /* Adds underline to the link */
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+
+.made-by a:hover {
+    
+    color: #7C93C3;
+    text-decoration: underline;
+}
+
+@media screen and (max-width: 650px) {
+    .top-section {
+        max-width: 90%;
+        padding: 15px;
+    }
+
+    .top-section h1 {
+        font-size: 2.5em;
+    }
+
+    .made-by {
+        font-size: 1em;
+    }
+}
+.social-share {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.share-btn {
+    padding: 5px 10px;
+    border-radius: 10px;
+    color: white;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: opacity 0.3s ease;
+}
+
+.share-btn:hover {
+    opacity: 0.8;
+}
+
+.twitter-share {
+    background-color: #005bb5;
+}
+
+
+
+@media screen and (max-width: 600px) {
+    .social-share {
+        flex-direction: column;
+    }
+    
+    .share-btn {
+        text-align: center;
+    }
+}
+.ele {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+
+body.dark-mode .top-section {
+    background-color: #333; /* Gray background for the top section */
+    /* No border here */
+}
+
+body.dark-mode h1, 
+
+body.dark-mode h3 {
+    color: #a0a0a0;
+}
+
+body.dark-mode form {
+    background-color: #2e2e2e;
+    /* No border here */
+}
+
+body.dark-mode input[type="text"], 
+body.dark-mode textarea {
+    background-color: #333;
+    color: #e0e0e0;
+    border: none; /* Removed border */
+    outline: none; /* Removed default focus outline */
+}
+
+body.dark-mode input[type="text"]:focus, 
+body.dark-mode textarea:focus {
+    /* Optional: Add custom styling for focus if needed */
+    box-shadow: none; /* Remove default focus box-shadow */
+}
+
+body.dark-mode button {
+    background: linear-gradient(90deg, #3b3b3b, #5b5b5b);
+    color: #e0e0e0;
+    border: none; /* Removed border */
+}
+
+body.dark-mode button:hover {
+    background: linear-gradient(90deg, #3b3b3b, #4a4a4a);
+}
+
+body.dark-mode button.active {
+    background: #4a4a4a;
+    /* No border here */
+}
+
+body.dark-mode .tip {
+    background-color: #2e2e2e;
+    border: none; /* Removed border */
+    
+}
+
+body.dark-mode .tip h3 {
+    color: #a0a0a0;
+}
+
+body.dark-mode .tip p {
+    color: #e0e0e0;
+}
+body.dark-mode .tip-tip_of_the_day h2{
+    color:#005bb5
+}
+
+body.dark-mode .section-btn.active {
+    background-color: #5b5b5b;
+    /* No border here */
+}
+
+body.dark-mode .made-by a {
+    color: #a0a0a0;
+}
+
+body.dark-mode .made-by a:hover {
+    color: #e0e0e0;
+}
+
+body.dark-mode .social-share .share-btn {
+    background-color: #3b3b3b;
+    /* No border here */
+}
+
+body.dark-mode .reaction-btn {
+    background: #333; /* Default button background in dark mode */
+    border: none; /* Removed border */
+}
+
+body.dark-mode .reaction-btn.active {
+    background: #777; /* Darker background when active */
+    border: none; /* Removed border */
+}
+
+#darkModeToggle {
+    position: fixed; /* Fixes the button to a specific position on the page */
+    bottom: 10px; /* Adjust as needed for vertical positioning */
+    right: 10px; /* Adjust as needed for horizontal positioning */
+    width: 40px; /* Fixed width for round button */
+    height: 40px; /* Fixed height for round button */
+    border-radius: 30%; /* Makes the button round */
+    padding: 0; /* No padding, to maintain round shape */
+    font-size: 20px; /* Adjust font size to fit the round button */
+    background-color: #333; /* Background color for the button */
+    color: #e0e0e0; /* Text color for the button */
+    border: none; /* Remove default border */
+    cursor: pointer; /* Change cursor to pointer on hover */
+    z-index: 1000; /* Ensure the button is on top of other elements */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Optional: add a shadow for better visibility */
+    display: flex; /* Center icon in button */
+    align-items: center; /* Center icon vertically */
+    justify-content: center; /* Center icon horizontally */
+    text-align: center; /* Center text */
+}
+
+#darkModeToggle:hover {
+    background-color: #444; /* Darker background color on hover */
+}
+
+
+    </style>
+</head>
+<body>
+    <div class="top-section">
+        <h1><span class="gradient-text">TipsNOW</span></h1> 
+        <p></p>
+        <p class="made-by">Made by <a href="https://twitter.com/BhavikRohit22" target="_blank">Bhavik Rohit</a></p>
+         <!-- Add this line -->
+    </div>
+    
+    
+    
+    <form method="post" action="{% url 'manage_tips' %}">
+        {% csrf_token %}
+        <input type="text" name="username" placeholder="Username" required />
+        <input type="text" name="twitter_username" placeholder="Twitter Username (Optional)  Ex. BhavikRohit22" />
+        <textarea name="content" placeholder="Describe Your Consistency Tip Here..." required></textarea>
+        <div id="charCount">0 / 280</div>
+        <button type="submit">Tell Everyone</button>
+    </form>
+    
+    <div class="bottom-section">
+        <h2 class='titled'>Consistency Tips</h2>
+        <p>Upvote & Comment on your favorites. <a href="#">Share your best.</a> No account needed! 🥳🥳</p>
+        {% if tip_of_the_day %}
+<div class="tip-of-the-day">
+    <h2>Tip of the Day</h2>
+    <div class="tip" data-tip-id="{{ tip_of_the_day.id }}">
+        <h3>{{ tip_of_the_day.username }}</h3>
+        {% if tip_of_the_day.twitter_username %}
+            <a href="https://twitter.com/{{ tip_of_the_day.twitter_username }}" class="twitter-link" target="_blank">Twitter: {{ tip_of_the_day.twitter_username }}</a>
+        {% endif %}
+        <p>{{ tip_of_the_day.content }}</p>
+       
+        <div class="social-share">
+            <a href="https://twitter.com/intent/tweet?text={{ tip_of_the_day.content|urlencode }}&url={{ request.build_absolute_uri|urlencode }}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+        <div class="section-selector">
+            <button class="section-btn active" data-section="feed">Feed 😃</button>
+            <button class="section-btn" data-section="trending">Trending 🔥</button>
+            <button class="section-btn" data-section="new">New 🆕</button>
+        </div>
+
+        <div class="tips-container" id="tipsContainer">
+            <!-- Tips will be loaded here -->
+             
+        </div>
+    </div>
+    <button id="darkModeToggle">🌙</button>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            
+            // Check if dark mode is enabled in local storage
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark-mode');
+            }
+        
+            darkModeToggle.addEventListener('click', function() {
+                if (document.body.classList.contains('dark-mode')) {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('darkMode', 'disabled');
+                } else {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('darkMode', 'enabled');
+                }
+            });
+        });
+        
+        // Call this function after the DOM is loaded
+        
+        const textarea = document.querySelector('textarea[name="content"]');
+const charCount = document.getElementById('charCount');
+const maxChars = 280;
+
+textarea.addEventListener('input', function() {
+    const remaining = maxChars - this.value.length;
+    charCount.textContent = `${this.value.length} / ${maxChars}`;
+    if (remaining < 0) {
+        charCount.style.color = 'red';
+    } else {
+        charCount.style.color = 'black';
+    }
+});
+        document.addEventListener('DOMContentLoaded', function() {
+            const sectionButtons = document.querySelectorAll('.section-btn');
+            const tipsContainer = document.getElementById('tipsContainer');
+        
+            sectionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const section = this.dataset.section;
+                    sectionButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    loadTips(section);
+                });
+            });
+        
+            function loadTips(section) {
+                fetch(`/get-tips/${section}/`)
+                    .then(response => response.json())
+                    .then(tips => {
+                        tipsContainer.innerHTML = '';
+                        tips.forEach(tip => {
+                            tipsContainer.innerHTML += createTipHTML(tip);
+                        });
+                        addReactionListeners();
+                    });
+            }
+        
+            function createTipHTML(tip) {
+                const encodedTipContent = encodeURIComponent(tip.content);
+                const encodedUrl = encodeURIComponent(window.location.href);
+                
+                return `
+                    <div class="tip" data-tip-id="${tip.id}">
+                        <h3>${tip.username}</h3>
+                        ${tip.twitter_username ? `<a href="https://twitter.com/${tip.twitter_username}" class="twitter-link" target="_blank">Twitter: ${tip.twitter_username}</a>` : ''}
+                        <p>${tip.content}</p>
+                        <span class='likes'>Likes: <span class="likes-count">${tip.likes}</span> Dislikes: <span class="dislikes-count">${tip.dislikes}</span></span>
+                        <div class='ele'>
+                        <div class="reaction-buttons">
+                            <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
+                            <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
+                        </div>
+                        <div class="social-share">
+                            <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
+                            
+                        </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+        
+            function addReactionListeners() {
+                document.querySelectorAll('.reaction-btn').forEach(button => {
+                    button.addEventListener('click', handleReaction);
+                });
+               
+            }
+            
+        
+            function handleReaction(event) {
+                const button = event.target;
+                const tipElement = button.closest('.tip');
+                const tipId = tipElement.dataset.tipId;
+                const reactionType = button.dataset.reaction;
+        
+                fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(updatedTip => {
+                    updateTipUI(tipElement, updatedTip);
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        
+            function updateTipUI(tipElement, updatedTip) {
+                tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
+                tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
+                
+                const likeBtn = tipElement.querySelector('.like-btn');
+                const dislikeBtn = tipElement.querySelector('.dislike-btn');
+                
+                likeBtn.classList.toggle('active', updatedTip.liked);
+                dislikeBtn.classList.toggle('active', updatedTip.disliked);
+            }
+        
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        
+            // Load Feed by default
+            loadTips('feed');
+        });
+        </script>
+</body>
+</html>
