@@ -694,51 +694,52 @@ function setupRealtimeListeners() {
 setupRealtimeListeners();
 
 function handleReaction(event) {
-        const button = event.target;
-        const tipElement = button.closest('.tip');
-        const tipId = tipElement.dataset.tipId;
-        const reactionType = button.dataset.reaction;
+    const button = event.target;
+    const tipElement = button.closest('.tip');
+    const tipId = tipElement.dataset.tipId;
+    const reactionType = button.dataset.reaction;
 
-        // Check if the user has already reacted
-        const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
-        if (userReactions[tipId]) {
-            alert('You have already reacted to this tip!');
-            return;
+    // Check if the user has already reacted
+    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
+    if (userReactions[tipId]) {
+        alert('You have already reacted to this tip!');
+        return;
+    }
+
+    fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(updatedTip => {
+        if (updatedTip.error) {
+            console.error('Error:', updatedTip.error);
+        } else {
+            updateTipUI(tipElement, updatedTip);
+            // Store the user's reaction
+            userReactions[tipId] = reactionType;
+            localStorage.setItem('userReactions', JSON.stringify(userReactions));
         }
+    })
+    .catch(error => console.error('Error:', error));
+}
 
-        fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({})
-        })
-        .then(response => response.json())
-        .then(updatedTip => {
-            if (updatedTip.error) {
-                console.error('Error:', updatedTip.error);
-            } else {
-                updateTipUI(tipElement, updatedTip);
-                // Store the user's reaction
-                userReactions[tipId] = reactionType;
-                localStorage.setItem('userReactions', JSON.stringify(userReactions));
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
+function updateTipUI(tipElement, updatedTip) {
+    tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
+    tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
+    
+    const likeBtn = tipElement.querySelector('.like-btn');
+    const dislikeBtn = tipElement.querySelector('.dislike-btn');
+    
+    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
+    likeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'like');
+    dislikeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'dislike');
+}
 
-    function updateTipUI(tipElement, updatedTip) {
-        tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
-        tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
-        
-        const likeBtn = tipElement.querySelector('.like-btn');
-        const dislikeBtn = tipElement.querySelector('.dislike-btn');
-        
-        const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
-        likeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'like');
-        dislikeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'dislike');
-    }
 // Make sure this function is defined to get the CSRF token
 function getCookie(name) {
     let cookieValue = null;
