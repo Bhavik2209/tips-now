@@ -71,38 +71,29 @@ def toggle_reaction(request, tip_id, reaction_type):
         tip = tip_ref.get()
         
         if tip.exists:
-            liked_tips = request.session.get('liked_tips', [])
-            disliked_tips = request.session.get('disliked_tips', [])
-            
-            if reaction_type == 'like':
-                if tip_id in liked_tips:
-                    liked_tips.remove(tip_id)
-                    tip_ref.update({'likes': firestore.Increment(-1)})
-                else:
-                    liked_tips.append(tip_id)
-                    tip_ref.update({'likes': firestore.Increment(1)})
-                    if tip_id in disliked_tips:
-                        disliked_tips.remove(tip_id)
-                        tip_ref.update({'dislikes': firestore.Increment(-1)})
-            elif reaction_type == 'dislike':
-                if tip_id in disliked_tips:
-                    disliked_tips.remove(tip_id)
-                    tip_ref.update({'dislikes': firestore.Increment(-1)})
-                else:
-                    disliked_tips.append(tip_id)
-                    tip_ref.update({'dislikes': firestore.Increment(1)})
-                    if tip_id in liked_tips:
-                        liked_tips.remove(tip_id)
-                        tip_ref.update({'likes': firestore.Increment(-1)})
-            
-            request.session['liked_tips'] = liked_tips
-            request.session['disliked_tips'] = disliked_tips
-            
+            # Use a transaction to ensure data consistency
+            @firestore.transactional
+            def update_reaction(transaction):
+                tip_snapshot = tip_ref.get(transaction=transaction)
+                current_likes = tip_snapshot.get('likes', 0)
+                current_dislikes = tip_snapshot.get('dislikes', 0)
+
+                if reaction_type == 'like':
+                    transaction.update(tip_ref, {
+                        'likes': current_likes + 1,
+                        'dislikes': max(0, current_dislikes - 1)  # Ensure it doesn't go negative
+                    })
+                elif reaction_type == 'dislike':
+                    transaction.update(tip_ref, {
+                        'dislikes': current_dislikes + 1,
+                        'likes': max(0, current_likes - 1)  # Ensure it doesn't go negative
+                    })
+
+            # Run the transaction
+            db.transaction(update_reaction)
+
             # Fetch updated tip data
             updated_tip = tip_ref.get().to_dict()
-            updated_tip['liked'] = tip_id in liked_tips
-            updated_tip['disliked'] = tip_id in disliked_tips
-            
             return JsonResponse(updated_tip)
     
     return JsonResponse({'error': 'Invalid request'}, status=400)

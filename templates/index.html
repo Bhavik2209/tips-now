@@ -664,27 +664,52 @@ textarea.addEventListener('input', function() {
             }
             
         
-            function handleReaction(event) {
-                const button = event.target;
-                const tipElement = button.closest('.tip');
-                const tipId = tipElement.dataset.tipId;
-                const reactionType = button.dataset.reaction;
-        
-                fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => response.json())
-                .then(updatedTip => {
-                    updateTipUI(tipElement, updatedTip);
-                })
-                .catch(error => console.error('Error:', error));
+            // Set up real-time listeners for tips
+function setupRealtimeListeners() {
+    db.collection('tips').onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified') {
+                const updatedTip = change.doc.data();
+                updateTipUI(document.querySelector(`.tip[data-tip-id="${updatedTip.id}"]`), updatedTip);
             }
-        
+        });
+    });
+}
+
+// Call this function after the page loads
+document.addEventListener('DOMContentLoaded', setupRealtimeListeners);
+
+// Modify the handleReaction function
+function handleReaction(event) {
+    const button = event.target;
+    const tipElement = button.closest('.tip');
+    const tipId = tipElement.dataset.tipId;
+    const reactionType = button.dataset.reaction;
+
+    // Check if the user has already reacted
+    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
+    if (userReactions[tipId] === reactionType) {
+        alert('You have already ' + reactionType + 'd this tip!');
+        return;
+    }
+
+    fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(updatedTip => {
+        updateTipUI(tipElement, updatedTip);
+        // Store the user's reaction
+        userReactions[tipId] = reactionType;
+        localStorage.setItem('userReactions', JSON.stringify(userReactions));
+    })
+    .catch(error => console.error('Error:', error));
+}
             function updateTipUI(tipElement, updatedTip) {
                 tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
                 tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
@@ -715,5 +740,15 @@ textarea.addEventListener('input', function() {
             loadTips('feed');
         });
         </script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-79289TZ2BE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-79289TZ2BE');
+</script>
 </body>
 </html>
