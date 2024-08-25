@@ -63,10 +63,10 @@ def manage_tips(request):
     
     return view_tips(request)
 
-from django.http import JsonResponse
 
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect
+import uuid
 
 @require_POST
 @csrf_protect
@@ -75,39 +75,45 @@ def toggle_reaction(request, tip_id, reaction_type):
     tip = tip_ref.get()
     
     if tip.exists:
-        liked_tips = request.session.get('liked_tips', [])
-        disliked_tips = request.session.get('disliked_tips', [])
-        
-        if reaction_type == 'like':
-            if tip_id in liked_tips:
-                liked_tips.remove(tip_id)
-                tip_ref.update({'likes': firestore.Increment(-1)})
+        # Get or create a unique identifier for the user
+        user_id = request.COOKIES.get('user_id')
+        if not user_id:
+            user_id = str(uuid.uuid4())
+
+        # Use a separate collection to store user reactions
+        reaction_ref = db.collection('user_reactions').document(f"{user_id}_{tip_id}")
+        reaction = reaction_ref.get()
+
+        if reaction.exists:
+            current_reaction = reaction.to_dict().get('reaction')
+            
+            if current_reaction == reaction_type:
+                # User is toggling off their reaction
+                reaction_ref.delete()
+                tip_ref.update({f"{reaction_type}s": firestore.Increment(-1)})
             else:
-                liked_tips.append(tip_id)
-                tip_ref.update({'likes': firestore.Increment(1)})
-                if tip_id in disliked_tips:
-                    disliked_tips.remove(tip_id)
-                    tip_ref.update({'dislikes': firestore.Increment(-1)})
-        elif reaction_type == 'dislike':
-            if tip_id in disliked_tips:
-                disliked_tips.remove(tip_id)
-                tip_ref.update({'dislikes': firestore.Increment(-1)})
-            else:
-                disliked_tips.append(tip_id)
-                tip_ref.update({'dislikes': firestore.Increment(1)})
-                if tip_id in liked_tips:
-                    liked_tips.remove(tip_id)
-                    tip_ref.update({'likes': firestore.Increment(-1)})
-        
-        request.session['liked_tips'] = liked_tips
-        request.session['disliked_tips'] = disliked_tips
-        
+                # User is changing their reaction
+                reaction_ref.update({'reaction': reaction_type})
+                tip_ref.update({
+                    f"{current_reaction}s": firestore.Increment(-1),
+                    f"{reaction_type}s": firestore.Increment(1)
+                })
+        else:
+            # New reaction
+            reaction_ref.set({'reaction': reaction_type})
+            tip_ref.update({f"{reaction_type}s": firestore.Increment(1)})
+
         # Fetch updated tip data
         updated_tip = tip_ref.get().to_dict()
-        updated_tip['liked'] = tip_id in liked_tips
-        updated_tip['disliked'] = tip_id in disliked_tips
+        updated_tip['liked'] = reaction_type == 'like' if reaction.exists else False
+        updated_tip['disliked'] = reaction_type == 'dislike' if reaction.exists else False
         
-        return JsonResponse(updated_tip)
+        response = JsonResponse(updated_tip)
+        if not request.COOKIES.get('user_id'):
+            response.set_cookie('user_id', user_id, max_age=365*24*60*60)  # Set cookie to expire in 1 year
+        return response
+    
+    return JsonResponse({'error': 'Tip not found'}, status=404)
     
     return JsonResponse({'error': 'Tip not found'}, status=404)
 def get_tips(request, section):
