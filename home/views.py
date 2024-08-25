@@ -68,9 +68,6 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect
 
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_protect
-
 @require_POST
 @csrf_protect
 def toggle_reaction(request, tip_id, reaction_type):
