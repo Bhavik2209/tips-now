@@ -680,36 +680,19 @@ function setupRealtimeListeners() {
 document.addEventListener('DOMContentLoaded', setupRealtimeListeners);
 
 // Modify the handleReaction function
-function setupRealtimeListeners() {
-    db.collection('tips').onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === 'modified') {
-                const updatedTip = change.doc.data();
-                updateTipUI(document.querySelector(`.tip[data-tip-id="${updatedTip.id}"]`), updatedTip);
-            }
-        });
-    });
-}
-
-setupRealtimeListeners();
-
 function handleReaction(event) {
     const button = event.target;
     const tipElement = button.closest('.tip');
     const tipId = tipElement.dataset.tipId;
     const reactionType = button.dataset.reaction;
 
-    // Check if the user has already reacted
-    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
-    if (userReactions[tipId]) {
-        alert('You have already reacted to this tip!');
-        return;
-    }
+    // Get the CSRF token
+    const csrftoken = getCookie('csrftoken');
 
     fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
@@ -720,9 +703,6 @@ function handleReaction(event) {
             console.error('Error:', updatedTip.error);
         } else {
             updateTipUI(tipElement, updatedTip);
-            // Store the user's reaction
-            userReactions[tipId] = reactionType;
-            localStorage.setItem('userReactions', JSON.stringify(userReactions));
         }
     })
     .catch(error => console.error('Error:', error));
@@ -735,9 +715,8 @@ function updateTipUI(tipElement, updatedTip) {
     const likeBtn = tipElement.querySelector('.like-btn');
     const dislikeBtn = tipElement.querySelector('.dislike-btn');
     
-    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
-    likeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'like');
-    dislikeBtn.classList.toggle('active', userReactions[updatedTip.id] === 'dislike');
+    likeBtn.classList.toggle('active', updatedTip.liked);
+    dislikeBtn.classList.toggle('active', updatedTip.disliked);
 }
 
 // Make sure this function is defined to get the CSRF token
