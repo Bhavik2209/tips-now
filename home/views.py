@@ -72,44 +72,31 @@ from django.views.decorators.csrf import csrf_protect
 @csrf_protect
 def toggle_reaction(request, tip_id, reaction_type):
     tip_ref = db.collection('tips').document(tip_id)
-    tip = tip_ref.get()
     
-    if tip.exists:
-        liked_tips = request.session.get('liked_tips', [])
-        disliked_tips = request.session.get('disliked_tips', [])
-        
+    @firestore.transactional
+    def update_reaction(transaction):
+        tip = tip_ref.get(transaction=transaction)
+        if not tip.exists:
+            return None
+
+        tip_data = tip.to_dict()
+        current_likes = tip_data.get('likes', 0)
+        current_dislikes = tip_data.get('dislikes', 0)
+
         if reaction_type == 'like':
-            if tip_id in liked_tips:
-                liked_tips.remove(tip_id)
-                tip_ref.update({'likes': firestore.Increment(-1)})
-            else:
-                liked_tips.append(tip_id)
-                tip_ref.update({'likes': firestore.Increment(1)})
-                if tip_id in disliked_tips:
-                    disliked_tips.remove(tip_id)
-                    tip_ref.update({'dislikes': firestore.Increment(-1)})
+            tip_data['likes'] = current_likes + 1
         elif reaction_type == 'dislike':
-            if tip_id in disliked_tips:
-                disliked_tips.remove(tip_id)
-                tip_ref.update({'dislikes': firestore.Increment(-1)})
-            else:
-                disliked_tips.append(tip_id)
-                tip_ref.update({'dislikes': firestore.Increment(1)})
-                if tip_id in liked_tips:
-                    liked_tips.remove(tip_id)
-                    tip_ref.update({'likes': firestore.Increment(-1)})
-        
-        request.session['liked_tips'] = liked_tips
-        request.session['disliked_tips'] = disliked_tips
-        
-        # Fetch updated tip data
-        updated_tip = tip_ref.get().to_dict()
-        updated_tip['liked'] = tip_id in liked_tips
-        updated_tip['disliked'] = tip_id in disliked_tips
-        
-        return JsonResponse(updated_tip)
+            tip_data['dislikes'] = current_dislikes + 1
+
+        transaction.set(tip_ref, tip_data)
+        return tip_data
+
+    updated_tip = db.transaction(update_reaction)
     
-    return JsonResponse({'error': 'Tip not found'}, status=404)
+    if updated_tip:
+        return JsonResponse(updated_tip)
+    else:
+        return JsonResponse({'error': 'Tip not found'}, status=404)
 def get_tips(request, section):
     tips_ref = db.collection('tips')
     
