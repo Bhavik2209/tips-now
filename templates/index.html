@@ -686,55 +686,54 @@ function handleReaction(event) {
     const tipId = tipElement.dataset.tipId;
     const reactionType = button.dataset.reaction;
 
-    // Check if the user has already reacted
-    const userReactions = JSON.parse(localStorage.getItem('userReactions') || '{}');
-    if (userReactions[tipId] === reactionType) {
-        alert('You have already ' + reactionType + 'd this tip!');
-        return;
-    }
+    // Get the CSRF token
+    const csrftoken = getCookie('csrftoken');
 
     fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
     })
     .then(response => response.json())
     .then(updatedTip => {
-        updateTipUI(tipElement, updatedTip);
-        // Store the user's reaction
-        userReactions[tipId] = reactionType;
-        localStorage.setItem('userReactions', JSON.stringify(userReactions));
+        if (updatedTip.error) {
+            console.error('Error:', updatedTip.error);
+        } else {
+            updateTipUI(tipElement, updatedTip);
+        }
     })
     .catch(error => console.error('Error:', error));
 }
-            function updateTipUI(tipElement, updatedTip) {
-                tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
-                tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
-                
-                const likeBtn = tipElement.querySelector('.like-btn');
-                const dislikeBtn = tipElement.querySelector('.dislike-btn');
-                
-                likeBtn.classList.toggle('active', updatedTip.liked);
-                dislikeBtn.classList.toggle('active', updatedTip.disliked);
+
+function updateTipUI(tipElement, updatedTip) {
+    tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
+    tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
+    
+    const likeBtn = tipElement.querySelector('.like-btn');
+    const dislikeBtn = tipElement.querySelector('.dislike-btn');
+    
+    likeBtn.classList.toggle('active', updatedTip.liked);
+    dislikeBtn.classList.toggle('active', updatedTip.disliked);
+}
+
+// Make sure this function is defined to get the CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
-        
-            function getCookie(name) {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
-            }
+        }
+    }
+    return cookieValue;
+}
         
             // Load Feed by default
             loadTips('feed');
