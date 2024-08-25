@@ -107,8 +107,13 @@ def toggle_reaction(request, tip_id, reaction_type):
         updated_tip = tip_ref.get().to_dict()
         updated_tip['liked'] = reaction_type == 'like' if reaction.exists else False
         updated_tip['disliked'] = reaction_type == 'dislike' if reaction.exists else False
-        
-        response = JsonResponse(updated_tip)
+        response_data = {
+            'likes': updated_tip['likes'],
+            'dislikes': updated_tip['dislikes'],
+            'liked': updated_tip['liked'],
+            'disliked': updated_tip['disliked']
+        }
+        response = JsonResponse(response_data)
         if not request.COOKIES.get('user_id'):
             response.set_cookie('user_id', user_id, max_age=365*24*60*60)  # Set cookie to expire in 1 year
         return response
