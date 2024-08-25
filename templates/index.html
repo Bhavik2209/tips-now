@@ -517,10 +517,6 @@ body.dark-mode .reaction-btn.active {
     background-color: #444; /* Darker background color on hover */
 }
 
-.reaction-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
     </style>
 </head>
@@ -647,74 +643,81 @@ textarea.addEventListener('input', function() {
                         <span class='likes'>Likes: <span class="likes-count">${tip.likes}</span> Dislikes: <span class="dislikes-count">${tip.dislikes}</span></span>
                         <div class='ele'>
                         <div class="reaction-buttons">
-                            <button class="reaction-btn like-btn ${tip.user_reaction === 'like' ? 'active' : ''}" data-reaction="like" ${tip.user_reaction ? 'disabled' : ''}>👍</button>
-                            <button class="reaction-btn dislike-btn ${tip.user_reaction === 'dislike' ? 'active' : ''}" data-reaction="dislike" ${tip.user_reaction ? 'disabled' : ''}>👎</button>
+                            <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
+                            <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
                         </div>
                         <div class="social-share">
                             <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
+                            
                         </div>
                         </div>
                     </div>
                 `;
             }
             
-            function handleReaction(event) {
-                const button = event.target;
-                if (button.disabled) return;
-            
-                const tipElement = button.closest('.tip');
-                const tipId = tipElement.dataset.tipId;
-                const reactionType = button.dataset.reaction;
-            
-                const csrftoken = getCookie('csrftoken');
-            
-                fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => response.json())
-                .then(updatedTip => {
-                    if (updatedTip.error) {
-                        console.error('Error:', updatedTip.error);
-                    } else {
-                        updateTipUI(tipElement, updatedTip);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
-            
-            function updateTipUI(tipElement, updatedTip) {
-                tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
-                tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
-                
-                const likeBtn = tipElement.querySelector('.like-btn');
-                const dislikeBtn = tipElement.querySelector('.dislike-btn');
-                
-                likeBtn.classList.toggle('active', updatedTip.user_reaction === 'like');
-                dislikeBtn.classList.toggle('active', updatedTip.user_reaction === 'dislike');
-                
-                likeBtn.disabled = !!updatedTip.user_reaction;
-                dislikeBtn.disabled = !!updatedTip.user_reaction;
-            }
-            
-            // Add this to your existing code
-            function setupRealtimeListeners() {
-                db.collection('tips').onSnapshot((snapshot) => {
-                    snapshot.docChanges().forEach((change) => {
-                        if (change.type === 'modified') {
-                            const updatedTip = change.doc.data();
-                            updateTipUI(document.querySelector(`.tip[data-tip-id="${updatedTip.id}"]`), updatedTip);
-                        }
-                    });
+        
+            function addReactionListeners() {
+                document.querySelectorAll('.reaction-btn').forEach(button => {
+                    button.addEventListener('click', handleReaction);
                 });
+               
             }
             
-            // Call this function after the page loads
-            document.addEventListener('DOMContentLoaded', setupRealtimeListeners);
+        
+            // Set up real-time listeners for tips
+function setupRealtimeListeners() {
+    db.collection('tips').onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified') {
+                const updatedTip = change.doc.data();
+                updateTipUI(document.querySelector(`.tip[data-tip-id="${updatedTip.id}"]`), updatedTip);
+            }
+        });
+    });
+}
+
+// Call this function after the page loads
+document.addEventListener('DOMContentLoaded', setupRealtimeListeners);
+
+// Modify the handleReaction function
+function handleReaction(event) {
+    const button = event.target;
+    const tipElement = button.closest('.tip');
+    const tipId = tipElement.dataset.tipId;
+    const reactionType = button.dataset.reaction;
+
+    // Get the CSRF token
+    const csrftoken = getCookie('csrftoken');
+
+    fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(updatedTip => {
+        if (updatedTip.error) {
+            console.error('Error:', updatedTip.error);
+        } else {
+            updateTipUI(tipElement, updatedTip);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function updateTipUI(tipElement, updatedTip) {
+    tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
+    tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
+    
+    const likeBtn = tipElement.querySelector('.like-btn');
+    const dislikeBtn = tipElement.querySelector('.dislike-btn');
+    
+    likeBtn.classList.toggle('active', updatedTip.liked);
+    dislikeBtn.classList.toggle('active', updatedTip.disliked);
+}
 
 // Make sure this function is defined to get the CSRF token
 function getCookie(name) {
