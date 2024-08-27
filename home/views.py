@@ -9,12 +9,14 @@ from html import escape
 import random
 import uuid
 import re
+from functools import lru_cache
 
 db = firestore.client()
 
 def sanitize_input(text):
     return escape(text)
 
+@lru_cache(maxsize=1)
 def get_tip_of_the_day():
     today = timezone.now().date()
     daily_tip_doc_ref = db.collection('daily_tip').document(str(today))
@@ -28,7 +30,7 @@ def get_tip_of_the_day():
         if tip and is_tip_safe(tip):
             return tip
     
-    all_tips_query = db.collection('tips').limit(100).stream()  # Limit the query to improve performance
+    all_tips_query = db.collection('tips').limit(50).stream()  # Reduced limit
     safe_tips = [tip.to_dict() for tip in all_tips_query if is_tip_safe(tip.to_dict())]
     
     if safe_tips:
@@ -141,10 +143,7 @@ def get_tips(request, section):
     tips_ref = db.collection('tips')
     
     if section == 'feed':
-        # Use a more efficient method for random selection
-        all_tips = list(tips_ref.limit(50).stream())  # Limit to 50 for better performance
-        random.shuffle(all_tips)
-        tips = all_tips[:10]  # Select the first 10 after shuffling
+        tips = tips_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(50).stream()
     elif section == 'trending':
         tips = tips_ref.order_by('likes', direction=firestore.Query.DESCENDING).limit(10).stream()
     elif section == 'new':
@@ -161,8 +160,11 @@ def get_tips(request, section):
             tip_dict['disliked'] = tip_dict['id'] in disliked_tips
             tips_data.append(tip_dict)
     
+    if section == 'feed':
+        random.shuffle(tips_data)
+        tips_data = tips_data[:10]
+
     return JsonResponse(tips_data, safe=False)
 
-# New function to load initial feed
 def load_initial_feed(request):
     return get_tips(request, 'feed')
