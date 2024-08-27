@@ -12,6 +12,32 @@ from random import choice
 from django.utils import timezone
 from datetime import datetime, time
 
+
+import re
+from html import escape
+
+def contains_suspicious_content(text):
+    suspicious_patterns = [
+        r'<script',
+        r'javascript:',
+        r'onerror=',
+        r'onclick=',
+        r'onload=',
+        r'<iframe',
+        r'<button',
+        r'document\.write',
+        r'eval\(',
+        r'alert\(',
+        r'document\.cookie',
+        r'document\.title',
+        r'new Audio\(',
+    ]
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in suspicious_patterns)
+
+def sanitize_input(text):
+    return escape(text)
+
+
 def get_tip_of_the_day():
     today = timezone.now().date()
     daily_tip_doc_ref = db.collection('daily_tip').document(str(today))
@@ -41,11 +67,26 @@ def view_tips(request):
     tip_of_the_day = get_tip_of_the_day()
     return render(request, 'index.html', {'tip_of_the_day': tip_of_the_day})
 
+from django.core.exceptions import ValidationError
+
 def manage_tips(request):
     if request.method == 'POST':
         username = request.POST['username']
         twitter_username = request.POST.get('twitter_username', '')
         content = request.POST['content']
+        
+        # Sanitize inputs
+        username = sanitize_input(username)
+        twitter_username = sanitize_input(twitter_username)
+        content = sanitize_input(content)
+        
+        # Check for suspicious content
+        if contains_suspicious_content(username) or contains_suspicious_content(twitter_username) or contains_suspicious_content(content):
+            raise ValidationError("Suspicious content detected. Please remove any code or scripts from your input.")
+        
+        # Limit content length
+        if len(content) > 280:  # Assuming 280 is the maximum allowed length
+            raise ValidationError("Content exceeds maximum allowed length.")
         
         new_tip = {
             'id': str(uuid.uuid4()),
@@ -62,7 +103,6 @@ def manage_tips(request):
         return redirect('manage_tips')
     
     return view_tips(request)
-
 
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect

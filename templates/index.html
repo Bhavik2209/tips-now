@@ -572,6 +572,12 @@ body.dark-mode .reaction-btn.active {
     </div>
     <button id="darkModeToggle">🌙</button>
     <script>
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
 
         document.addEventListener('DOMContentLoaded', function() {
             const darkModeToggle = document.getElementById('darkModeToggle');
@@ -633,28 +639,86 @@ textarea.addEventListener('input', function() {
             }
         
             function createTipHTML(tip) {
-                const encodedTipContent = encodeURIComponent(tip.content);
-                const encodedUrl = encodeURIComponent(window.location.href);
-                
-                return `
-                    <div class="tip" data-tip-id="${tip.id}">
-                        <h3>${tip.username}</h3>
-                        ${tip.twitter_username ? `<a href="https://twitter.com/${tip.twitter_username}" class="twitter-link" target="_blank">Twitter: ${tip.twitter_username}</a>` : ''}
-                        <p>${tip.content}</p>
-                        <span class='likes'>Likes: <span class="likes-count">${tip.likes}</span> Dislikes: <span class="dislikes-count">${tip.dislikes}</span></span>
-                        <div class='ele'>
-                        <div class="reaction-buttons">
-                            <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
-                            <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
-                        </div>
-                        <div class="social-share">
-                            <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
-                            
-                        </div>
-                        </div>
-                    </div>
-                `;
-            }
+    const sanitizedUsername = sanitizeHTML(tip.username);
+    const sanitizedContent = sanitizeHTML(tip.content);
+    const sanitizedTwitterUsername = tip.twitter_username ? sanitizeHTML(tip.twitter_username) : '';
+    
+    const encodedTipContent = encodeURIComponent(sanitizedContent);
+    const encodedUrl = encodeURIComponent(window.location.href);
+    
+    return `
+        <div class="tip" data-tip-id="${tip.id}">
+            <h3>${sanitizedUsername}</h3>
+            ${sanitizedTwitterUsername ? `<a href="https://twitter.com/${sanitizedTwitterUsername}" class="twitter-link" target="_blank">Twitter: ${sanitizedTwitterUsername}</a>` : ''}
+            <p>${sanitizedContent}</p>
+            <span class='likes'>Likes: <span class="likes-count">${tip.likes}</span> Dislikes: <span class="dislikes-count">${tip.dislikes}</span></span>
+            <div class='ele'>
+            <div class="reaction-buttons">
+                <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
+                <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
+            </div>
+            <div class="social-share">
+                <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
+            </div>
+            </div>
+        </div>
+    `;
+}
+
+const textarea = document.querySelector('textarea[name="content"]');
+const charCount = document.getElementById('charCount');
+const maxChars = 280;
+
+textarea.addEventListener('input', function() {
+    const remaining = maxChars - this.value.length;
+    charCount.textContent = `${this.value.length} / ${maxChars}`;
+    if (remaining < 0) {
+        charCount.style.color = 'red';
+    } else {
+        charCount.style.color = 'black';
+    }
+    
+    // Check for suspicious content
+    if (containsSuspiciousContent(this.value)) {
+        this.setCustomValidity("Suspicious content detected. Please remove any code or scripts.");
+    } else {
+        this.setCustomValidity("");
+    }
+});
+
+function containsSuspiciousContent(text) {
+    const suspiciousPatterns = [
+        /<script/i,
+        /javascript:/i,
+        /onerror=/i,
+        /onclick=/i,
+        /onload=/i,
+        /<iframe/i,
+        /<button/i,
+        /document\.write/i,
+        /eval\(/i,
+        /alert\(/i,
+        /document\.cookie/i,
+        /document\.title/i,
+        /new Audio\(/i,
+    ];
+    return suspiciousPatterns.some(pattern => pattern.test(text));
+}
+document.querySelector('form').addEventListener('submit', function(event) {
+    const content = textarea.value;
+    const username = document.querySelector('input[name="username"]').value;
+    const twitterUsername = document.querySelector('input[name="twitter_username"]').value;
+    
+    if (containsSuspiciousContent(content) || containsSuspiciousContent(username) || containsSuspiciousContent(twitterUsername)) {
+        event.preventDefault();
+        alert("Suspicious content detected. Please remove any code or scripts from your input.");
+    }
+    
+    if (content.length > maxChars) {
+        event.preventDefault();
+        alert(`Content exceeds maximum allowed length (${maxChars} characters).`);
+    }
+});
             
         
             function addReactionListeners() {
