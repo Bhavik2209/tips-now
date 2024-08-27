@@ -25,7 +25,7 @@ def get_tip_of_the_day():
         return tip_doc.to_dict() if tip_doc.exists else None
     else:
         # No tip for today, select a random tip and store it
-        all_tips_query = db.collection('tips').stream()
+        all_tips_query = db.collection('tips').limit(10).stream()
         all_tips = list(all_tips_query)
         
         if all_tips:
