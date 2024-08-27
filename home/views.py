@@ -1,23 +1,19 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from firebase_admin import firestore
+from html import escape
 import random
 import uuid
+import re
 
 db = firestore.client()
 
-from random import choice
-
-from random import choice
-from django.utils import timezone
-from datetime import datetime, time
-
-
-import re
-
 def sanitize_input(text):
     return escape(text)
-
 
 def get_tip_of_the_day():
     today = timezone.now().date()
@@ -26,15 +22,13 @@ def get_tip_of_the_day():
     daily_tip_doc = daily_tip_doc_ref.get()
     
     if daily_tip_doc.exists:
-        # If the document exists, return the stored tip of the day
         tip_id = daily_tip_doc.to_dict().get('tip_id')
         tip_doc = db.collection('tips').document(tip_id).get()
         tip = tip_doc.to_dict() if tip_doc.exists else None
         if tip and is_tip_safe(tip):
             return tip
     
-    # No safe tip for today, select a random safe tip and store it
-    all_tips_query = db.collection('tips').stream()
+    all_tips_query = db.collection('tips').limit(100).stream()  # Limit the query to improve performance
     safe_tips = [tip.to_dict() for tip in all_tips_query if is_tip_safe(tip.to_dict())]
     
     if safe_tips:
@@ -50,25 +44,16 @@ def view_tips(request):
     tip_of_the_day = get_tip_of_the_day()
     return render(request, 'index.html', {'tip_of_the_day': tip_of_the_day})
 
-from django.core.exceptions import ValidationError
-
 def manage_tips(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        twitter_username = request.POST.get('twitter_username', '')
-        content = request.POST['content']
+        username = sanitize_input(request.POST['username'])
+        twitter_username = sanitize_input(request.POST.get('twitter_username', ''))
+        content = sanitize_input(request.POST['content'])
         
-        # Sanitize inputs
-        username = sanitize_input(username)
-        twitter_username = sanitize_input(twitter_username)
-        content = sanitize_input(content)
-        
-        # Check for suspicious content
         if contains_suspicious_content(username) or contains_suspicious_content(twitter_username) or contains_suspicious_content(content):
             raise ValidationError("Suspicious content detected. Please remove any code or scripts from your input.")
         
-        # Limit content length
-        if len(content) > 280:  # Assuming 280 is the maximum allowed length
+        if len(content) > 280:
             raise ValidationError("Content exceeds maximum allowed length.")
         
         new_tip = {
@@ -87,10 +72,6 @@ def manage_tips(request):
     
     return view_tips(request)
 
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_protect
-import uuid
-
 @require_POST
 @csrf_protect
 def toggle_reaction(request, tip_id, reaction_type):
@@ -98,12 +79,7 @@ def toggle_reaction(request, tip_id, reaction_type):
     tip = tip_ref.get()
     
     if tip.exists:
-        # Get or create a unique identifier for the user
-        user_id = request.COOKIES.get('user_id')
-        if not user_id:
-            user_id = str(uuid.uuid4())
-
-        # Use a separate collection to store user reactions
+        user_id = request.COOKIES.get('user_id', str(uuid.uuid4()))
         reaction_ref = db.collection('user_reactions').document(f"{user_id}_{tip_id}")
         reaction = reaction_ref.get()
 
@@ -111,22 +87,18 @@ def toggle_reaction(request, tip_id, reaction_type):
             current_reaction = reaction.to_dict().get('reaction')
             
             if current_reaction == reaction_type:
-                # User is toggling off their reaction
                 reaction_ref.delete()
                 tip_ref.update({f"{reaction_type}s": firestore.Increment(-1)})
             else:
-                # User is changing their reaction
                 reaction_ref.update({'reaction': reaction_type})
                 tip_ref.update({
                     f"{current_reaction}s": firestore.Increment(-1),
                     f"{reaction_type}s": firestore.Increment(1)
                 })
         else:
-            # New reaction
             reaction_ref.set({'reaction': reaction_type})
             tip_ref.update({f"{reaction_type}s": firestore.Increment(1)})
 
-        # Fetch updated tip data
         updated_tip = tip_ref.get().to_dict()
         updated_tip['liked'] = reaction_type == 'like' if reaction.exists else False
         updated_tip['disliked'] = reaction_type == 'dislike' if reaction.exists else False
@@ -138,14 +110,10 @@ def toggle_reaction(request, tip_id, reaction_type):
         }
         response = JsonResponse(response_data)
         if not request.COOKIES.get('user_id'):
-            response.set_cookie('user_id', user_id, max_age=365*24*60*60)  # Set cookie to expire in 1 year
+            response.set_cookie('user_id', user_id, max_age=365*24*60*60)
         return response
     
     return JsonResponse({'error': 'Tip not found'}, status=404)
-    
- 
-import re
-from html import escape
 
 def contains_suspicious_content(text):
     suspicious_patterns = [
@@ -173,15 +141,14 @@ def get_tips(request, section):
     tips_ref = db.collection('tips')
     
     if section == 'feed':
-        # Random selection of tips
-        tips = list(tips_ref.get())
-        random.shuffle(tips)
+        # Use a more efficient method for random selection
+        all_tips = list(tips_ref.limit(50).stream())  # Limit to 50 for better performance
+        random.shuffle(all_tips)
+        tips = all_tips[:10]  # Select the first 10 after shuffling
     elif section == 'trending':
-        # Most liked tips
-        tips = tips_ref.order_by('likes', direction=firestore.Query.DESCENDING).get()
+        tips = tips_ref.order_by('likes', direction=firestore.Query.DESCENDING).limit(10).stream()
     elif section == 'new':
-        # Newly added tips
-        tips = tips_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).get()
+        tips = tips_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10).stream()
     
     liked_tips = request.session.get('liked_tips', [])
     disliked_tips = request.session.get('disliked_tips', [])
@@ -193,8 +160,9 @@ def get_tips(request, section):
             tip_dict['liked'] = tip_dict['id'] in liked_tips
             tip_dict['disliked'] = tip_dict['id'] in disliked_tips
             tips_data.append(tip_dict)
-        
-        if len(tips_data) == 10:  # Limit to 10 safe tips
-            break
     
     return JsonResponse(tips_data, safe=False)
+
+# New function to load initial feed
+def load_initial_feed(request):
+    return get_tips(request, 'feed')

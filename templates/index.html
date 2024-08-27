@@ -578,7 +578,18 @@ body.dark-mode .reaction-btn.active {
             return temp.innerHTML;
         }
 
-
+        function loadInitialFeed() {
+            fetch('/get_tips/feed')
+                .then(response => response.json())
+                .then(data => {
+                    // Update your UI with the fetched tips
+                    updateFeedUI(data);
+                })
+                .catch(error => console.error('Error loading initial feed:', error));
+        }
+        
+        // Call this function when the page loads
+        document.addEventListener('DOMContentLoaded', loadInitialFeed);
         document.addEventListener('DOMContentLoaded', function() {
             const darkModeToggle = document.getElementById('darkModeToggle');
             
