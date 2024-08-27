@@ -14,25 +14,6 @@ from datetime import datetime, time
 
 
 import re
-from html import escape
-
-def contains_suspicious_content(text):
-    suspicious_patterns = [
-        r'<script',
-        r'javascript:',
-        r'onerror=',
-        r'onclick=',
-        r'onload=',
-        r'<iframe',
-        r'<button',
-        r'document\.write',
-        r'eval\(',
-        r'alert\(',
-        r'document\.cookie',
-        r'document\.title',
-        r'new Audio\(',
-    ]
-    return any(re.search(pattern, text, re.IGNORECASE) for pattern in suspicious_patterns)
 
 def sanitize_input(text):
     return escape(text)
@@ -48,20 +29,22 @@ def get_tip_of_the_day():
         # If the document exists, return the stored tip of the day
         tip_id = daily_tip_doc.to_dict().get('tip_id')
         tip_doc = db.collection('tips').document(tip_id).get()
-        return tip_doc.to_dict() if tip_doc.exists else None
-    else:
-        # No tip for today, select a random tip and store it
-        all_tips_query = db.collection('tips').stream()
-        all_tips = list(all_tips_query)
+        tip = tip_doc.to_dict() if tip_doc.exists else None
+        if tip and is_tip_safe(tip):
+            return tip
+    
+    # No safe tip for today, select a random safe tip and store it
+    all_tips_query = db.collection('tips').stream()
+    safe_tips = [tip.to_dict() for tip in all_tips_query if is_tip_safe(tip.to_dict())]
+    
+    if safe_tips:
+        selected_tip = random.choice(safe_tips)
+        tip_id = selected_tip['id']
         
-        if all_tips:
-            selected_tip = random.choice(all_tips).to_dict()
-            tip_id = selected_tip['id']
-            
-            daily_tip_doc_ref.set({'tip_id': tip_id})
-            return selected_tip
-        else:
-            return None
+        daily_tip_doc_ref.set({'tip_id': tip_id})
+        return selected_tip
+    else:
+        return None
 
 def view_tips(request):
     tip_of_the_day = get_tip_of_the_day()
@@ -160,7 +143,32 @@ def toggle_reaction(request, tip_id, reaction_type):
     
     return JsonResponse({'error': 'Tip not found'}, status=404)
     
-    return JsonResponse({'error': 'Tip not found'}, status=404)
+ 
+import re
+from html import escape
+
+def contains_suspicious_content(text):
+    suspicious_patterns = [
+        r'<script',
+        r'javascript:',
+        r'onerror=',
+        r'onclick=',
+        r'onload=',
+        r'<iframe',
+        r'<button',
+        r'document\.write',
+        r'eval\(',
+        r'alert\(',
+        r'document\.cookie',
+        r'document\.title',
+        r'new Audio\(',
+    ]
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in suspicious_patterns)
+
+def is_tip_safe(tip):
+    return not (contains_suspicious_content(tip.get('content', '')) or 
+                contains_suspicious_content(tip.get('username', '')))
+
 def get_tips(request, section):
     tips_ref = db.collection('tips')
     
@@ -168,13 +176,12 @@ def get_tips(request, section):
         # Random selection of tips
         tips = list(tips_ref.get())
         random.shuffle(tips)
-        tips = tips[:10]
     elif section == 'trending':
         # Most liked tips
-        tips = tips_ref.order_by('likes', direction=firestore.Query.DESCENDING).limit(10).get()
+        tips = tips_ref.order_by('likes', direction=firestore.Query.DESCENDING).get()
     elif section == 'new':
         # Newly added tips
-        tips = tips_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10).get()
+        tips = tips_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).get()
     
     liked_tips = request.session.get('liked_tips', [])
     disliked_tips = request.session.get('disliked_tips', [])
@@ -182,8 +189,12 @@ def get_tips(request, section):
     tips_data = []
     for tip in tips:
         tip_dict = tip.to_dict()
-        tip_dict['liked'] = tip_dict['id'] in liked_tips
-        tip_dict['disliked'] = tip_dict['id'] in disliked_tips
-        tips_data.append(tip_dict)
+        if is_tip_safe(tip_dict):
+            tip_dict['liked'] = tip_dict['id'] in liked_tips
+            tip_dict['disliked'] = tip_dict['id'] in disliked_tips
+            tips_data.append(tip_dict)
+        
+        if len(tips_data) == 10:  # Limit to 10 safe tips
+            break
     
     return JsonResponse(tips_data, safe=False)
