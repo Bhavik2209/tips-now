@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TipsNOW - Consistency Tips</title>
     
-   
+    <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}" > <!-- Add this line -->
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka+One&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Permanent+Marker&family=Bangers&family=Caveat:wght@400;700&family=Lobster&display=swap" rel="stylesheet">
     
@@ -572,69 +572,73 @@ body.dark-mode .reaction-btn.active {
     </div>
     <button id="darkModeToggle">🌙</button>
     <script>
-        // Utility functions
-// Utility functions
-function sanitizeHTML(str) {
-    const temp = document.createElement('div');
-    temp.textContent = str;
-    return temp.innerHTML;
-}
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
 
-// DOM elements
-const textarea = document.querySelector('textarea[name="content"]');
+        document.addEventListener('DOMContentLoaded', function() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            
+            // Check if dark mode is enabled in local storage
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark-mode');
+            }
+        
+            darkModeToggle.addEventListener('click', function() {
+                if (document.body.classList.contains('dark-mode')) {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('darkMode', 'disabled');
+                } else {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('darkMode', 'enabled');
+                }
+            });
+        });
+        
+        // Call this function after the DOM is loaded
+        
+        const textarea = document.querySelector('textarea[name="content"]');
 const charCount = document.getElementById('charCount');
 const maxChars = 280;
-const tipsContainer = document.getElementById('tipsContainer');
 
-// Firestore reference
-const db = firebase.firestore();
-
-// Event listeners
-document.addEventListener('DOMContentLoaded', initializeApp);
-textarea.addEventListener('input', handleTextareaInput);
-document.querySelector('form').addEventListener('submit', handleFormSubmit);
-
-// Initialize app
-function initializeApp() {
-    loadInitialFeed();
-    setupDarkMode();
-    setupSectionButtons();
-    setupRealtimeListeners();
-}
-
-// Feed loading
-function loadInitialFeed() {
-    loadTips('feed');
-}
-
-function loadTips(section) {
-    let query;
-    switch(section) {
-        case 'trending':
-            query = db.collection('tips').orderBy('likes', 'desc').limit(10);
-            break;
-        case 'new':
-            query = db.collection('tips').orderBy('timestamp', 'desc').limit(10);
-            break;
-        default: // 'feed'
-            query = db.collection('tips').orderBy('timestamp', 'desc').limit(50);
+textarea.addEventListener('input', function() {
+    const remaining = maxChars - this.value.length;
+    charCount.textContent = `${this.value.length} / ${maxChars}`;
+    if (remaining < 0) {
+        charCount.style.color = 'red';
+    } else {
+        charCount.style.color = 'black';
     }
-
-    query.get().then((querySnapshot) => {
-        const tips = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-        tipsContainer.innerHTML = tips.map(createTipHTML).join('');
-        addReactionListeners();
-    }).catch(error => console.error('Error loading tips:', error));
-}
-
-// Tip HTML creation
-function createTipHTML(tip) {
+});
+        document.addEventListener('DOMContentLoaded', function() {
+            const sectionButtons = document.querySelectorAll('.section-btn');
+            const tipsContainer = document.getElementById('tipsContainer');
+        
+            sectionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const section = this.dataset.section;
+                    sectionButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    loadTips(section);
+                });
+            });
+        
+            function loadTips(section) {
+                fetch(`/get-tips/${section}/`)
+                    .then(response => response.json())
+                    .then(tips => {
+                        tipsContainer.innerHTML = '';
+                        tips.forEach(tip => {
+                            tipsContainer.innerHTML += createTipHTML(tip);
+                        });
+                        addReactionListeners();
+                    });
+            }
+        
+            function createTipHTML(tip) {
     const sanitizedUsername = sanitizeHTML(tip.username);
     const sanitizedContent = sanitizeHTML(tip.content);
     const sanitizedTwitterUsername = tip.twitter_username ? sanitizeHTML(tip.twitter_username) : '';
@@ -649,29 +653,58 @@ function createTipHTML(tip) {
             <p>${sanitizedContent}</p>
             <span class='likes'>Likes: <span class="likes-count">${tip.likes}</span> Dislikes: <span class="dislikes-count">${tip.dislikes}</span></span>
             <div class='ele'>
-                <div class="reaction-buttons">
-                    <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
-                    <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
-                </div>
-                <div class="social-share">
-                    <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
-                </div>
+            <div class="reaction-buttons">
+                <button class="reaction-btn like-btn ${tip.liked ? 'active' : ''}" data-reaction="like">👍</button>
+                <button class="reaction-btn dislike-btn ${tip.disliked ? 'active' : ''}" data-reaction="dislike">👎</button>
+            </div>
+            <div class="social-share">
+                <a href="https://twitter.com/intent/tweet?text=${encodedTipContent}&url=${encodedUrl}" target="_blank" class="share-btn twitter-share">Share on Twitter</a>
+            </div>
             </div>
         </div>
     `;
 }
 
-// Textarea handling
-function handleTextareaInput() {
+const textarea = document.querySelector('textarea[name="content"]');
+const charCount = document.getElementById('charCount');
+const maxChars = 280;
+
+textarea.addEventListener('input', function() {
     const remaining = maxChars - this.value.length;
     charCount.textContent = `${this.value.length} / ${maxChars}`;
-    charCount.style.color = remaining < 0 ? 'red' : 'black';
+    if (remaining < 0) {
+        charCount.style.color = 'red';
+    } else {
+        charCount.style.color = 'black';
+    }
     
-    this.setCustomValidity(containsSuspiciousContent(this.value) ? "Suspicious content detected. Please remove any code or scripts." : "");
-}
+    // Check for suspicious content
+    if (containsSuspiciousContent(this.value)) {
+        this.setCustomValidity("Suspicious content detected. Please remove any code or scripts.");
+    } else {
+        this.setCustomValidity("");
+    }
+});
 
-// Form submission
-function handleFormSubmit(event) {
+function containsSuspiciousContent(text) {
+    const suspiciousPatterns = [
+        /<script/i,
+        /javascript:/i,
+        /onerror=/i,
+        /onclick=/i,
+        /onload=/i,
+        /<iframe/i,
+        /<button/i,
+        /document\.write/i,
+        /eval\(/i,
+        /alert\(/i,
+        /document\.cookie/i,
+        /document\.title/i,
+        /new Audio\(/i,
+    ];
+    return suspiciousPatterns.some(pattern => pattern.test(text));
+}
+document.querySelector('form').addEventListener('submit', function(event) {
     const content = textarea.value;
     const username = document.querySelector('input[name="username"]').value;
     const twitterUsername = document.querySelector('input[name="twitter_username"]').value;
@@ -679,67 +712,52 @@ function handleFormSubmit(event) {
     if (containsSuspiciousContent(content) || containsSuspiciousContent(username) || containsSuspiciousContent(twitterUsername)) {
         event.preventDefault();
         alert("Suspicious content detected. Please remove any code or scripts from your input.");
-    } else if (content.length > maxChars) {
+    }
+    
+    if (content.length > maxChars) {
         event.preventDefault();
         alert(`Content exceeds maximum allowed length (${maxChars} characters).`);
     }
-}
-
-// Content validation
-function containsSuspiciousContent(text) {
-    const suspiciousPatterns = [
-        /<script/i, /javascript:/i, /onerror=/i, /onclick=/i, /onload=/i,
-        /<iframe/i, /<button/i, /document\.write/i, /eval\(/i, /alert\(/i,
-        /document\.cookie/i, /document\.title/i, /new Audio\(/i,
-    ];
-    return suspiciousPatterns.some(pattern => pattern.test(text));
-}
-
-// Dark mode
-function setupDarkMode() {
-    const darkModeToggle = document.getElementById('darkModeToggle');
-    
-    if (localStorage.getItem('darkMode') === 'enabled') {
-        document.body.classList.add('dark-mode');
-    }
-
-    darkModeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
-    });
-}
-
-// Section buttons
-function setupSectionButtons() {
-    const sectionButtons = document.querySelectorAll('.section-btn');
-    
-    sectionButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const section = this.dataset.section;
-            sectionButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-            loadTips(section);
+});
+            
+        
+            function addReactionListeners() {
+                document.querySelectorAll('.reaction-btn').forEach(button => {
+                    button.addEventListener('click', handleReaction);
+                });
+               
+            }
+            
+        
+            // Set up real-time listeners for tips
+function setupRealtimeListeners() {
+    db.collection('tips').onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified') {
+                const updatedTip = change.doc.data();
+                updateTipUI(document.querySelector(`.tip[data-tip-id="${updatedTip.id}"]`), updatedTip);
+            }
         });
     });
 }
 
-// Reaction handling
-function addReactionListeners() {
-    document.querySelectorAll('.reaction-btn').forEach(button => {
-        button.addEventListener('click', handleReaction);
-    });
-}
+// Call this function after the page loads
+document.addEventListener('DOMContentLoaded', setupRealtimeListeners);
 
+// Modify the handleReaction function
 function handleReaction(event) {
     const button = event.target;
     const tipElement = button.closest('.tip');
     const tipId = tipElement.dataset.tipId;
     const reactionType = button.dataset.reaction;
 
+    // Get the CSRF token
+    const csrftoken = getCookie('csrftoken');
+
     fetch(`/toggle_reaction/${tipId}/${reactionType}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
@@ -759,43 +777,42 @@ function updateTipUI(tipElement, updatedTip) {
     tipElement.querySelector('.likes-count').textContent = updatedTip.likes;
     tipElement.querySelector('.dislikes-count').textContent = updatedTip.dislikes;
     
-    tipElement.querySelector('.like-btn').classList.toggle('active', updatedTip.liked);
-    tipElement.querySelector('.dislike-btn').classList.toggle('active', updatedTip.disliked);
+    const likeBtn = tipElement.querySelector('.like-btn');
+    const dislikeBtn = tipElement.querySelector('.dislike-btn');
+    
+    likeBtn.classList.toggle('active', updatedTip.liked);
+    dislikeBtn.classList.toggle('active', updatedTip.disliked);
 }
 
-// Real-time updates
-function setupRealtimeListeners() {
-    db.collection('tips').orderBy('timestamp', 'desc').limit(50).onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            const tipData = change.doc.data();
-            tipData.id = change.doc.id;
-            
-            if (change.type === 'added') {
-                const tipHTML = createTipHTML(tipData);
-                tipsContainer.insertAdjacentHTML('afterbegin', tipHTML);
-                addReactionListeners();
-            } else if (change.type === 'modified') {
-                const tipElement = document.querySelector(`.tip[data-tip-id="${tipData.id}"]`);
-                if (tipElement) {
-                    updateTipUI(tipElement, tipData);
-                }
-            } else if (change.type === 'removed') {
-                const tipElement = document.querySelector(`.tip[data-tip-id="${tipData.id}"]`);
-                if (tipElement) {
-                    tipElement.remove();
-                }
+// Make sure this function is defined to get the CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
-        });
-    }, (error) => {
-        console.error("Error setting up real-time listeners:", error);
-    });
+        }
+    }
+    return cookieValue;
 }
+        
+            // Load Feed by default
+            loadTips('feed');
+        });
+        </script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-79289TZ2BE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
 
-// Google Analytics
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-79289TZ2BE');
+  gtag('config', 'G-79289TZ2BE');
 </script>
 </body>
 </html>
